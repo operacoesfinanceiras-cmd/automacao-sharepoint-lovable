@@ -1,0 +1,42 @@
+name: Automação SharePoint
+
+on:
+  schedule:
+    - cron: '0 11 * * *'  # roda às 8h BR (UTC-3)
+  workflow_dispatch:
+
+jobs:
+  processar-sharepoint:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 📥 Checkout
+      uses: actions/checkout@v4
+
+    - name: 🐍 Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: 📦 Instalar dependências
+      run: |
+        pip install -r scripts/requirements.txt
+
+    - name: 🔽 Baixar do SharePoint
+      env:
+        SHAREPOINT_SITE: ${{ secrets.SHAREPOINT_SITE }}
+        SHAREPOINT_USER: ${{ secrets.SHAREPOINT_USER }}
+        SHAREPOINT_PASSWORD: ${{ secrets.SHAREPOINT_PASSWORD }}
+        SHAREPOINT_FOLDER: ${{ secrets.SHAREPOINT_FOLDER }}
+      run: python scripts/download_sharepoint.py
+
+    - name: 🔄 Processar planilhas
+      run: python scripts/process_data.py
+
+    - name: 💾 Commit/Push dos dados
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        git add data/
+        git diff --quiet || git commit -m "🤖 Atualização automática - $(date +'%Y-%m-%d %H:%M:%S')"
+        git push
